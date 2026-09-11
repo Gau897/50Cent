@@ -5,6 +5,7 @@ import { Route, Coordinates } from "@/types/route";
 import { RiskZone } from "@/types/riskZone";
 import { Accident } from "@/types/accident";
 import { GhostHazard } from "@/types/ghostHazard";
+import { RouteTimelineHazard } from "@/components/route/VisualRouteSegmentStrip";
 
 export interface MapContainerProps {
   routes?: Route[];
@@ -13,6 +14,7 @@ export interface MapContainerProps {
   riskZones?: RiskZone[];
   accidents?: Accident[];
   ghostHazards?: GhostHazard[];
+  timelineHazards?: RouteTimelineHazard[];
   userLocation?: Coordinates;
   userHeading?: number;
   showRiskZones?: boolean;

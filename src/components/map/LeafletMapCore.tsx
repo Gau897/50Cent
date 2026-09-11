@@ -6,6 +6,7 @@ import { Route, Coordinates } from "@/types/route";
 import { RiskZone } from "@/types/riskZone";
 import { Accident } from "@/types/accident";
 import { GhostHazard } from "@/types/ghostHazard";
+import { RouteTimelineHazard } from "@/components/route/VisualRouteSegmentStrip";
 
 interface LeafletMapCoreProps {
   routes?: Route[];
@@ -14,6 +15,7 @@ interface LeafletMapCoreProps {
   riskZones?: RiskZone[];
   accidents?: Accident[];
   ghostHazards?: GhostHazard[];
+  timelineHazards?: RouteTimelineHazard[];
   userLocation?: Coordinates;
   userHeading?: number;
   showRiskZones?: boolean;
@@ -35,6 +37,7 @@ export default function LeafletMapCore({
   riskZones = [],
   accidents = [],
   ghostHazards = [],
+  timelineHazards = [],
   userLocation,
   userHeading = 0,
   showRiskZones = true,
@@ -56,6 +59,7 @@ export default function LeafletMapCore({
   const riskZoneLayersRef = useRef<L.LayerGroup | null>(null);
   const accidentLayersRef = useRef<L.LayerGroup | null>(null);
   const ghostHazardLayersRef = useRef<L.LayerGroup | null>(null);
+  const timelineHazardLayersRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Initialize Map
@@ -68,20 +72,20 @@ export default function LeafletMapCore({
 
     const map = L.map(mapContainerRef.current, {
       center: initialCenter,
-      zoom: 12,
+      zoom: 13,
       zoomControl: false,
       attributionControl: false,
     });
 
     L.control.zoom({ position: "topleft" }).addTo(map);
 
-    // High-Res Satellite Imagery
+    // Satellite Imagery
     baseTileLayerRef.current = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       { maxZoom: 19 }
     ).addTo(map);
 
-    // Place names & road boundaries overlay
+    // Places & boundaries overlay
     labelTileLayerRef.current = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
       { maxZoom: 19 }
@@ -91,6 +95,7 @@ export default function LeafletMapCore({
     riskZoneLayersRef.current = L.layerGroup().addTo(map);
     accidentLayersRef.current = L.layerGroup().addTo(map);
     ghostHazardLayersRef.current = L.layerGroup().addTo(map);
+    timelineHazardLayersRef.current = L.layerGroup().addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -127,15 +132,15 @@ export default function LeafletMapCore({
     }
   }, [mapTheme]);
 
-  // Render Routes
+  // Render Routes & Origin/Destination Markers
   useEffect(() => {
     if (!mapInstanceRef.current || !routeLayersRef.current) return;
     routeLayersRef.current.clearLayers();
 
     const colorMap: Record<string, string> = {
-      'route-1': '#22C55E', // Green (Fastest)
-      'route-2': '#3B82F6', // Blue (Safest)
-      'route-3': '#F97316', // Orange (Alternative)
+      'route-1': '#22C55E', // Green
+      'route-2': '#3B82F6', // Blue
+      'route-3': '#F97316', // Orange
     };
 
     routes.forEach((route) => {
@@ -158,30 +163,48 @@ export default function LeafletMapCore({
       routeLayersRef.current!.addLayer(polyline);
 
       if (route.coordinates.length > 0) {
-        // Start Pin (Green)
+        // Origin Pin (Green Beacon)
         const startIcon = L.divIcon({
           className: "custom-start-marker",
-          html: '<div style="width:16px;height:16px;border-radius:50%;background:#10B981;border:3px solid #ffffff;box-shadow:0 0 10px rgba(16,185,129,0.9);"></div>',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: `
+            <div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;width:24px;height:24px;border-radius:50%;background:#10B981;opacity:0.4;animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite;"></div>
+              <div style="width:16px;height:16px;border-radius:50%;background:#10B981;border:3px solid #ffffff;box-shadow:0 0 12px #10B981;"></div>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
         });
-        L.marker(route.coordinates[0], { icon: startIcon }).addTo(routeLayersRef.current!);
+        const startMarker = L.marker(route.coordinates[0], { icon: startIcon }).addTo(routeLayersRef.current!);
+        startMarker.bindTooltip('<b>ORIGIN: Start Point</b><br/>MIHAN Corridor', {
+          direction: 'top',
+          className: 'custom-leaflet-tooltip',
+        });
 
-        // End Pin (Red)
+        // Destination Pin (Red Flag Beacon)
         const endIcon = L.divIcon({
           className: "custom-end-marker",
-          html: '<div style="width:16px;height:16px;border-radius:50%;background:#EF4444;border:3px solid #ffffff;box-shadow:0 0 10px rgba(239,68,68,0.9);"></div>',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: `
+            <div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;width:24px;height:24px;border-radius:50%;background:#EF4444;opacity:0.4;animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite;"></div>
+              <div style="width:16px;height:16px;border-radius:50%;background:#EF4444;border:3px solid #ffffff;box-shadow:0 0 12px #EF4444;"></div>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
         });
-        L.marker(route.coordinates[route.coordinates.length - 1], { icon: endIcon }).addTo(routeLayersRef.current!);
+        const endMarker = L.marker(route.coordinates[route.coordinates.length - 1], { icon: endIcon }).addTo(routeLayersRef.current!);
+        endMarker.bindTooltip('<b>DESTINATION: End Point</b><br/>Sitabuldi Metro Interchange', {
+          direction: 'top',
+          className: 'custom-leaflet-tooltip',
+        });
 
         // Floating Route Badge in the middle of each route
         if (showFloatingRouteBadges) {
           const midIndex = Math.floor(route.coordinates.length / 2);
           const midCoord = route.coordinates[midIndex];
           const badgeHtml = `
-            <div style="background:rgba(15,23,30,0.88);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.5);cursor:pointer;text-align:center;">
+            <div style="background:rgba(15,23,30,0.92);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.6);cursor:pointer;text-align:center;">
               <span style="display:block;font-size:9px;color:${routeColor};">${route.name.split(' ')[0]} ${route.id === 'route-1' ? '1' : route.id === 'route-2' ? '2' : '3'}</span>
               <span>${route.durationMinutes} min | ${route.distanceKm} km</span>
             </div>
@@ -209,6 +232,68 @@ export default function LeafletMapCore({
       mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40] });
     }
   }, [routes, selectedRouteId, onSelectRoute, followUser, showFloatingRouteBadges]);
+
+  // Render Route Timeline Hazard Location Points on the Map
+  useEffect(() => {
+    if (!mapInstanceRef.current || !timelineHazardLayersRef.current) return;
+    timelineHazardLayersRef.current.clearLayers();
+
+    // Specific geographic coords for the timeline hazards along Nagpur Route 1/2
+    const hazardLocations: { [key: string]: [number, number] } = {
+      h1: [21.1124, 79.0682], // Blackspot: Chhatrapati Square
+      h2: [21.0892, 79.0589], // Rain: Airport South
+      h3: [21.1245, 79.0721], // Roadblock: Ajni Square
+      h4: [21.1356, 79.0778], // Ghost Hazard: Rahate Colony
+    };
+
+    timelineHazards.forEach((h) => {
+      const coords = hazardLocations[h.id] || [21.1124, 79.0682];
+
+      let iconColor = '#EF4444';
+      let iconSymbol = '⚠';
+      if (h.type === 'rain') {
+        iconColor = '#3B82F6';
+        iconSymbol = '🌧';
+      } else if (h.type === 'blackspot') {
+        iconColor = '#DC2626';
+        iconSymbol = '💀';
+      } else if (h.type === 'roadblock') {
+        iconColor = '#F59E0B';
+        iconSymbol = '🚧';
+      } else if (h.type === 'ghost') {
+        iconColor = '#F97316';
+        iconSymbol = '🛡️';
+      }
+
+      const iconHtml = `
+        <div style="position:relative;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <div style="position:absolute;width:30px;height:30px;border-radius:50%;background:${iconColor};opacity:0.35;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
+          <div style="width:24px;height:24px;border-radius:50%;background:${iconColor};border:2px solid #ffffff;box-shadow:0 0 10px ${iconColor};display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:11px;font-weight:900;">
+            ${iconSymbol}
+          </div>
+        </div>
+      `;
+
+      const marker = L.marker(coords, {
+        icon: L.divIcon({
+          className: "route-hazard-location-point",
+          html: iconHtml,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        }),
+      });
+
+      marker.bindTooltip(
+        `<b>${h.title}</b><br/><span style="color:#10B981;">At ${h.kmPosition} km on route</span><br/>${h.detail}`,
+        {
+          direction: "top",
+          className: "custom-leaflet-tooltip",
+        }
+      );
+
+      timelineHazardLayersRef.current!.addLayer(marker);
+    });
+  }, [timelineHazards]);
 
   // Render Risk Zones
   useEffect(() => {
@@ -339,7 +424,7 @@ export default function LeafletMapCore({
     });
   }, [ghostHazards, showGhostHazards, onSelectGhostHazard]);
 
-  // Render User Location
+  // Render User Location Arrow
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
