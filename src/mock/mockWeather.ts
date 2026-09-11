@@ -1,0 +1,40 @@
+import { WeatherCondition } from '@/types/weather';
+
+export const mockWeatherMap: Record<string, WeatherCondition> = {
+  'route-1': {
+    routeId: 'route-1',
+    condition: 'Rainy',
+    temperatureC: 24,
+    precipitationPercent: 65,
+    visibilityKm: 4.5,
+    windSpeedKmh: 18,
+    humidityPercent: 82,
+    roadCondition: 'Wet',
+    warningMessage: 'Moderate rain reported along expressway flyovers. Reduce speed by 15%.',
+    warningLevel: 'moderate',
+  },
+  'route-2': {
+    routeId: 'route-2',
+    condition: 'Cloudy',
+    temperatureC: 25,
+    precipitationPercent: 20,
+    visibilityKm: 8.0,
+    windSpeedKmh: 9,
+    humidityPercent: 68,
+    roadCondition: 'Dry',
+    warningMessage: 'Optimal road conditions with excellent visibility across urban links.',
+    warningLevel: 'none',
+  },
+  'route-3': {
+    routeId: 'route-3',
+    condition: 'Foggy',
+    temperatureC: 21,
+    precipitationPercent: 75,
+    visibilityKm: 1.8,
+    windSpeedKmh: 26,
+    humidityPercent: 94,
+    roadCondition: 'Slippery',
+    warningMessage: 'Dense hill mist & damp hairpins. Heavy caution advised for two-wheelers.',
+    warningLevel: 'severe',
+  },
+};

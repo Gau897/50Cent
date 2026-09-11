@@ -1,0 +1,80 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Route {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   // fastest | safest | alternative
+  tag             String
+  distanceKm      Float
+  durationMinutes Int
+  riskScore       Int
+  safetyScore     Int
+  color           String
+  isRecommended   Boolean  @default(false)
+  summary         String
+  via             String
+  elevationGainM  Int      @default(0)
+  averageSpeedKmh Int      @default(40)
+  createdAt       DateTime @default(now())
+}
+
+model RiskZone {
+  id                  String   @id @default(cuid())
+  name                String
+  title               String
+  level               String   // low | medium | high | critical
+  lat                 Float
+  lng                 Float
+  radiusMeters        Int
+  description         String
+  reason              String
+  accidentCount       Int
+  mostCommonSeverity  String
+  speedLimitKmh       Int
+  recommendedSpeedKmh Int
+  color               String
+  createdAt           DateTime @default(now())
+  accidents           Accident[]
+}
+
+model Accident {
+  id               String    @id @default(cuid())
+  riskZoneId       String
+  riskZone         RiskZone  @relation(fields: [riskZoneId], references: [id])
+  title            String
+  locationName     String
+  lat              Float
+  lng              Float
+  date             DateTime
+  severity         String    // minor | moderate | severe | fatal
+  vehiclesInvolved Int
+  weatherCondition String
+  description      String
+  imageUrl         String
+  cause            String
+  timeOfDay        String
+  createdAt        DateTime  @default(now())
+}
+
+model NavigationSession {
+  id                   String    @id @default(cuid())
+  routeId              String
+  routeName            String
+  originName           String
+  destinationName      String
+  startedAt            DateTime  @default(now())
+  endedAt              DateTime?
+  totalDistanceKm      Float
+  totalDurationMinutes Int
+  riskZonesEncountered Int       @default(0)
+  alertsTriggered      Int       @default(0)
+  averageSpeedKmh      Int       @default(40)
+  status               String    // active | completed | cancelled
+}
