@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { Route, Coordinates } from "@/types/route";
 import { RiskZone } from "@/types/riskZone";
 import { Accident } from "@/types/accident";
+import { GhostHazard } from "@/types/ghostHazard";
 
 export interface MapContainerProps {
   routes?: Route[];
@@ -11,12 +12,15 @@ export interface MapContainerProps {
   onSelectRoute?: (id: string) => void;
   riskZones?: RiskZone[];
   accidents?: Accident[];
+  ghostHazards?: GhostHazard[];
   userLocation?: Coordinates;
   userHeading?: number;
   showRiskZones?: boolean;
   showAccidents?: boolean;
+  showGhostHazards?: boolean;
   onSelectZone?: (zone: RiskZone) => void;
   onSelectAccident?: (accident: Accident) => void;
+  onSelectGhostHazard?: (hazard: GhostHazard) => void;
   followUser?: boolean;
   mapTheme?: "satellite" | "standard" | "dark";
   className?: string;

@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { Route, Coordinates } from "@/types/route";
 import { RiskZone } from "@/types/riskZone";
 import { Accident } from "@/types/accident";
+import { GhostHazard } from "@/types/ghostHazard";
 
 interface LeafletMapCoreProps {
   routes?: Route[];
@@ -12,12 +13,15 @@ interface LeafletMapCoreProps {
   onSelectRoute?: (id: string) => void;
   riskZones?: RiskZone[];
   accidents?: Accident[];
+  ghostHazards?: GhostHazard[];
   userLocation?: Coordinates;
   userHeading?: number;
   showRiskZones?: boolean;
   showAccidents?: boolean;
+  showGhostHazards?: boolean;
   onSelectZone?: (zone: RiskZone) => void;
   onSelectAccident?: (accident: Accident) => void;
+  onSelectGhostHazard?: (hazard: GhostHazard) => void;
   followUser?: boolean;
   mapTheme?: "satellite" | "standard" | "dark";
   className?: string;
@@ -30,14 +34,17 @@ export default function LeafletMapCore({
   onSelectRoute,
   riskZones = [],
   accidents = [],
+  ghostHazards = [],
   userLocation,
   userHeading = 0,
   showRiskZones = true,
   showAccidents = true,
+  showGhostHazards = true,
   onSelectZone,
   onSelectAccident,
+  onSelectGhostHazard,
   followUser = false,
-  mapTheme = "satellite", // Default to Satellite as in visual reference!
+  mapTheme = "satellite",
   className = "w-full h-full",
   showFloatingRouteBadges = true,
 }: LeafletMapCoreProps) {
@@ -48,6 +55,7 @@ export default function LeafletMapCore({
   const routeLayersRef = useRef<L.LayerGroup | null>(null);
   const riskZoneLayersRef = useRef<L.LayerGroup | null>(null);
   const accidentLayersRef = useRef<L.LayerGroup | null>(null);
+  const ghostHazardLayersRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Initialize Map
@@ -56,7 +64,7 @@ export default function LeafletMapCore({
 
     const initialCenter: [number, number] = userLocation
       ? [userLocation.lat, userLocation.lng]
-      : [18.5204, 73.8567]; // Pune center
+      : [21.1124, 79.0682]; // Nagpur center
 
     const map = L.map(mapContainerRef.current, {
       center: initialCenter,
@@ -67,7 +75,7 @@ export default function LeafletMapCore({
 
     L.control.zoom({ position: "topleft" }).addTo(map);
 
-    // High-Res Satellite Imagery (Zero Watermarks)
+    // High-Res Satellite Imagery
     baseTileLayerRef.current = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       { maxZoom: 19 }
@@ -82,10 +90,10 @@ export default function LeafletMapCore({
     routeLayersRef.current = L.layerGroup().addTo(map);
     riskZoneLayersRef.current = L.layerGroup().addTo(map);
     accidentLayersRef.current = L.layerGroup().addTo(map);
+    ghostHazardLayersRef.current = L.layerGroup().addTo(map);
 
     mapInstanceRef.current = map;
 
-    // Trigger invalidateSize to ensure full dimensions
     const t1 = setTimeout(() => map.invalidateSize(), 150);
     const t2 = setTimeout(() => map.invalidateSize(), 600);
 
@@ -119,10 +127,7 @@ export default function LeafletMapCore({
     }
   }, [mapTheme]);
 
-  // Render Routes with specific colors:
-  // Route 1 (Fastest): Bright Green (#22C55E)
-  // Route 2 (Safest): Blue (#3B82F6)
-  // Route 3 (Alternative): Orange (#F97316)
+  // Render Routes
   useEffect(() => {
     if (!mapInstanceRef.current || !routeLayersRef.current) return;
     routeLayersRef.current.clearLayers();
@@ -152,8 +157,8 @@ export default function LeafletMapCore({
 
       routeLayersRef.current!.addLayer(polyline);
 
-      // Start Pin (Green circle)
       if (route.coordinates.length > 0) {
+        // Start Pin (Green)
         const startIcon = L.divIcon({
           className: "custom-start-marker",
           html: '<div style="width:16px;height:16px;border-radius:50%;background:#10B981;border:3px solid #ffffff;box-shadow:0 0 10px rgba(16,185,129,0.9);"></div>',
@@ -162,7 +167,7 @@ export default function LeafletMapCore({
         });
         L.marker(route.coordinates[0], { icon: startIcon }).addTo(routeLayersRef.current!);
 
-        // End Pin (Red drop pin)
+        // End Pin (Red)
         const endIcon = L.divIcon({
           className: "custom-end-marker",
           html: '<div style="width:16px;height:16px;border-radius:50%;background:#EF4444;border:3px solid #ffffff;box-shadow:0 0 10px rgba(239,68,68,0.9);"></div>',
@@ -171,7 +176,7 @@ export default function LeafletMapCore({
         });
         L.marker(route.coordinates[route.coordinates.length - 1], { icon: endIcon }).addTo(routeLayersRef.current!);
 
-        // Floating Route Badge in the middle of each route (as in the reference screenshot)
+        // Floating Route Badge in the middle of each route
         if (showFloatingRouteBadges) {
           const midIndex = Math.floor(route.coordinates.length / 2);
           const midCoord = route.coordinates[midIndex];
@@ -198,7 +203,6 @@ export default function LeafletMapCore({
       }
     });
 
-    // Auto-fit bounds
     const activeRoute = routes.find((r) => r.id === selectedRouteId) || routes[0];
     if (activeRoute && activeRoute.coordinates.length > 0 && mapInstanceRef.current && !followUser) {
       const bounds = L.latLngBounds(activeRoute.coordinates);
@@ -290,6 +294,50 @@ export default function LeafletMapCore({
       accidentLayersRef.current!.addLayer(marker);
     });
   }, [accidents, showAccidents, onSelectAccident]);
+
+  // Render Ghost Hazards (Community Crowdsourced)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !ghostHazardLayersRef.current) return;
+    ghostHazardLayersRef.current.clearLayers();
+
+    if (!showGhostHazards || ghostHazards.length === 0) return;
+
+    ghostHazards.forEach((hazard) => {
+      if (hazard.status !== 'active') return;
+
+      const isCritical = hazard.severity === 'critical';
+      const beaconColor = isCritical ? '#EF4444' : '#F97316';
+
+      const iconHtml = `
+        <div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <div style="position:absolute;width:28px;height:28px;border-radius:50%;background:${beaconColor};opacity:0.4;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
+          <div style="width:20px;height:20px;border-radius:50%;background:${beaconColor};border:2px solid #ffffff;box-shadow:0 0 10px ${beaconColor};display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:10px;font-weight:900;">
+            🛡️
+          </div>
+        </div>
+      `;
+
+      const marker = L.marker(hazard.coordinates, {
+        icon: L.divIcon({
+          className: "ghost-hazard-marker",
+          html: iconHtml,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+      });
+
+      marker.on("click", () => {
+        if (onSelectGhostHazard) onSelectGhostHazard(hazard);
+      });
+
+      marker.bindTooltip(`<b>Ghost Hazard: ${hazard.title}</b><br/>${hazard.upvotes} verified`, {
+        direction: "top",
+        className: "custom-leaflet-tooltip",
+      });
+
+      ghostHazardLayersRef.current!.addLayer(marker);
+    });
+  }, [ghostHazards, showGhostHazards, onSelectGhostHazard]);
 
   // Render User Location
   useEffect(() => {

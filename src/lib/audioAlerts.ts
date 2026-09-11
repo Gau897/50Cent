@@ -51,7 +51,7 @@ class SoundAlertManager {
   }
 
   vibrate(pattern: number[] = [200, 100, 200]) {
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
       try {
         navigator.vibrate(pattern);
       } catch {}
@@ -60,3 +60,11 @@ class SoundAlertManager {
 }
 
 export const soundManager = new SoundAlertManager();
+
+export function playVoiceAlert(text: string) {
+  soundManager.speakWarning(text);
+}
+
+export function playWarningBeep(isCritical?: boolean) {
+  soundManager.playWarningBeep(isCritical);
+}
